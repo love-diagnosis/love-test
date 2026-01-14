@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>亲密关系深度扫描 · 灵魂版</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ============ 视觉系统：V4.2 最终优化版 ============ */
+        :root {
+            --primary: #ff4757; 
+            --accent: #ff6b81;
+            --dark: #2f3542;
+            --text-main: #2d3436;
+            --text-sub: #636e72;
+            --bg-gradient: linear-gradient(135deg, #fff0f0 0%, #ffe9e9 100%);
+            --card-shadow: 0 8px 25px rgba(255, 71, 87, 0.15);
+        }
+
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-image: var(--bg-gradient);
+            margin: 0; padding: 0; color: var(--text-main);
+            min-height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            width: 100%; max-width: 420px;
+            background: #ffffff; min-height: 100vh;
+            padding: 25px; box-sizing: border-box;
+            box-shadow: 0 0 50px rgba(0,0,0,0.05);
+            overflow-y: auto; position: relative;
+        }
+
+        /* 通用组件 */
+        .hidden { display: none !important; }
+        .btn {
+            display: block; width: 100%; padding: 16px;
+            background: var(--primary); color: white; border: none;
+            border-radius: 30px; font-size: 18px; font-weight: bold;
+            cursor: pointer; margin-top: 30px;
+            box-shadow: 0 6px 20px rgba(255, 71, 87, 0.3);
+            transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.96); }
+
+        /* 1. 首页 */
+        #landing-page { text-align: center; padding-top: 60px; }
+        .logo-emoji { font-size: 72px; margin-bottom: 10px; animation: heartbeat 2s infinite; }
+        @keyframes heartbeat { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        h1 { font-size: 26px; color: var(--text-main); margin-bottom: 5px; letter-spacing: 1px; }
+        .sub-title { color: var(--text-sub); font-size: 14px; margin-bottom: 50px; opacity: 0.8; }
+        .login-box { 
+            text-align: left; background: #fff; padding: 25px; 
+            border-radius: 20px; box-shadow: var(--card-shadow); border: 1px solid #fff0f0;
+        }
+        .input-box { 
+            width: 100%; padding: 16px; border: 2px solid #f1f2f6; 
+            border-radius: 12px; font-size: 16px; box-sizing: border-box; 
+            outline: none; background: #fafafa; transition: all 0.3s;
+        }
+        .input-box:focus { border-color: var(--primary); background: #fff; }
+
+        /* 2. 答题页 */
+        #quiz-page { padding-top: 10px; }
+        .progress-bar { height: 6px; background: #f1f2f6; border-radius: 3px; margin-bottom: 30px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        
+        .q-tag { 
+            display: inline-block; background: #ffeaa7; color: #d35400; 
+            padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-bottom: 15px;
+        }
+        .q-text { font-size: 20px; font-weight: 700; line-height: 1.5; margin-bottom: 30px; color: #2d3436; }
+        
+        .option-card {
+            background: #fff; border: 2px solid #f5f6fa; padding: 18px; border-radius: 16px;
+            margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; 
+            transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .option-card:active { border-color: var(--primary); background: #fff5f6; transform: scale(0.98); }
+        .option-circle { 
+            width: 20px; height: 20px; border: 2px solid #dfe4ea; border-radius: 50%; 
+            margin-right: 15px; flex-shrink: 0; 
+        }
+        .option-text { font-size: 15px; color: #57606f; font-weight: 500; }
+
+        /* 3. 结果页 */
+        #result-page { animation: slideUp 0.6s ease; padding-bottom: 50px; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 顶部总分卡 (支持4档颜色) */
+        .score-card {
+            /* 默认背景，会被JS覆盖 */
+            background: linear-gradient(135deg, #ff4757, #ff7e5f);
+            color: white; border-radius: 24px; padding: 30px; text-align: center;
+            margin-bottom: 35px; box-shadow: 0 15px 30px rgba(255, 71, 87, 0.4);
+            position: relative; overflow: hidden; transition: background 0.5s ease;
+        }
+        .score-card::after {
+            content: ""; position: absolute; top: -50%; right: -50%; width: 200px; height: 200px;
+            background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: none;
+        }
+        .big-score { font-size: 72px; font-weight: 800; line-height: 1; margin: 10px 0; text-shadow: 2px 2px 0 rgba(0,0,0,0.1); }
+        .score-tag { background: rgba(0,0,0,0.2); padding: 6px 16px; border-radius: 20px; font-size: 13px; display: inline-block; backdrop-filter: blur(5px); }
+
+        /* 模块标题 */
+        .section-header { 
+            font-size: 18px; font-weight: 800; color: #2d3436; 
+            margin-bottom: 20px; display: flex; align-items: center; 
+        }
+        .section-header::before { content: ''; width: 6px; height: 20px; background: var(--primary); margin-right: 10px; border-radius: 4px; }
+
+        /* 诊断卡片 */
+        .diagnosis-card {
+            background: #fff; border-radius: 18px; padding: 25px 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #f1f2f6; margin-bottom: 25px;
+        }
+        .diag-title { font-size: 17px; font-weight: 700; color: #2d3436; margin-bottom: 15px; display: flex; align-items: center; }
+        
+        /* 灰色专业解释框 */
+        .term-box {
+            background: #f8f9fa; border-radius: 8px; padding: 12px; margin: 15px 0;
+            font-size: 12px; color: #636e72; line-height: 1.6; border-left: 3px solid #b2bec3;
+        }
+        .diag-text { font-size: 15px; color: #2d3436; line-height: 1.7; text-align: justify; }
+
+        /* CP匹配卡片 (垂直排列+悬挂缩进) */
+        .cp-box {
+            margin-top: 15px; padding-top: 15px; border-top: 1px dashed #dfe6e9;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .cp-row { display: flex; align-items: flex-start; font-size: 13px; line-height: 1.5; }
+        .cp-label { font-weight: bold; color: var(--primary); margin-right: 6px; white-space: nowrap; flex-shrink: 0; }
+        .cp-text { color: #2d3436; }
+
+        /* 处方笺 */
+        .prescription-paper {
+            background: #fff9fa; border: 2px dashed #ffb8b8; border-radius: 20px; 
+            padding: 25px 20px; position: relative; margin-top: 10px;
+        }
+        .paper-clip { 
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%); 
+            width: 30px; height: 10px; background: #dcdde1; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .healing-msg { font-style: italic; color: #7f8fa6; font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
+        
+        /* 处方笺列表样式 */
+        .action-step { display: flex; margin-bottom: 20px; align-items: flex-start; }
+        .action-label {
+            background: var(--primary); color: white; font-size: 12px; font-weight: bold;
+            padding: 5px 10px; border-radius: 8px; margin-right: 12px; flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(255, 71, 87, 0.2);
+        }
+        .action-content { font-size: 14px; color: #2d3436; line-height: 1.6; text-align: justify; }
+
+        /* 社交人设卡 (截图引流) */
+        .social-card {
+            background: #2f3542; color: #f1f2f6; border-radius: 16px; padding: 25px;
+            text-align: center; margin-top: 40px; position: relative; overflow: hidden;
+        }
+        .social-title { font-size: 12px; letter-spacing: 2px; opacity: 0.6; margin-bottom: 10px; text-transform: uppercase; }
+        .social-quote { font-size: 16px; font-weight: bold; font-family: "Songti SC", serif; line-height: 1.5; margin-bottom: 20px; color: #fff; }
+        .social-tags { display: flex; justify-content: center; gap: 10px; }
+        .s-tag { background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 4px; font-size: 12px; }
+        
+        /* 新增：截图引导按钮 */
+        .screenshot-hint-btn {
+            display: block; margin: 20px auto 0 auto;
+            background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8);
+            font-size: 12px; padding: 8px 15px; border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2); cursor: pointer;
+        }
+
+        /* 加载动画 */
+        #loading-page { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .spinner { width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="landing-page">
+        <div class="logo-emoji">🏩</div>
+        <h1>亲密关系深度扫描</h1>
+        <p class="sub-title">听见身体没说出口的话 · 灵魂版</p>
+        
+        <div class="login-box">
+            <p style="font-weight: bold; margin-bottom: 15px;">开启你的深度报告：</p>
+            <input type="text" id="access-code" class="input-box" placeholder="请输入解锁码..." autocomplete="off">
+            <button class="btn" onclick="startTest()">开始扫描</button>
+            <p style="font-size: 12px; color: #b2bec3; margin-top: 20px; text-align: center;">
+                * 16道情境式测评，预计耗时3分钟
+            </p>
+        </div>
+    </div>
+
+    <div id="quiz-page" class="hidden">
+        <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+        
+        <div style="text-align: right; margin-bottom: 10px; font-size: 12px; color: #b2bec3; font-weight: bold;">
+            <span id="q-curr">1</span> / <span id="q-total">16</span>
+        </div>
+        
+        <div class="q-tag" id="q-tag">Tag</div>
+        <div class="q-text" id="q-title">题目加载中...</div>
+        <div id="options-container"></div>
+    </div>
+
+    <div id="loading-page" class="hidden">
+        <div class="spinner"></div>
+        <h3 style="color: #2d3436; margin-bottom: 10px;">AI 情感专家正在会诊</h3>
+        <p id="loading-text" style="color: #636e72; font-size: 14px;">正在解读潜意识信号...</p>
+    </div>
+
+    <div id="result-page" class="hidden">
+        <div class="score-card" id="score-card-bg">
+            <div style="opacity: 0.9; font-size: 14px; margin-bottom: 5px;">亲密关系能量指数</div>
+            <div class="big-score" id="final-score">--</div>
+            <div class="score-tag" id="score-comment">正在生成...</div>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <div class="section-header">能量分布图谱</div>
+            <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <div class="section-header">你的灵魂底色</div>
+            
+            <div class="diagnosis-card">
+                <div class="diag-title">
+                    <span style="font-size:20px; margin-right:8px;">🦋</span> 
+                    性爱人格 (Erotic Persona)
+                </div>
+                <div id="type-content"></div>
+            </div>
+
+            <div class="diagnosis-card">
+                <div class="diag-title">
+                    <span style="font-size:20px; margin-right:8px;">🔒</span> 
+                    内心安全锁 (Inner Security Lock)
+                </div>
+                <div id="brake-content"></div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 40px;">
+            <div class="section-header">给关系的灵药</div>
+            <div class="prescription-paper">
+                <div class="paper-clip"></div>
+                <div class="healing-msg" id="healing-intro"></div>
+                <div id="action-plan"></div>
+            </div>
+        </div>
+
+        <div class="social-card">
+            <div class="social-title">MY INTIMACY REPORT</div>
+            <div class="social-quote" id="social-quote">"所谓亲密，不过是身体终于找到了它的母语。"</div>
+            <div class="social-tags" id="social-tags">
+                <span class="s-tag">#感官型</span>
+                <span class="s-tag">#高敏感</span>
+            </div>
+            <button class="screenshot-hint-btn">👉 长按保存 / 截图分享你的灵魂底色</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ================= 配置区 =================
+    const VALID_CODES = ["888888", "Love2024", "A1B2C3", "Test001"];
+
+    // ================= 16道大师级扎心题库 (V4.1完整版) =================
+    // 题库内容保持不变，直接使用上一版的成熟题库
+    const questions = [
+        // --- 第一维度：现状 (4题) ---
+        { category: "能量场·频率", title: "除去生理期，最近两个月，你们深层亲密接触（Do）的真实状态是？", options: [{ text: "干柴烈火：每周2次以上，充满激情", score: 100, dimension: "frequency" }, { text: "细水长流：每周1次左右，规律且稳定", score: 80, dimension: "frequency" }, { text: "例行公事：半个月1次，像完成任务", score: 50, dimension: "frequency" }, { text: "室友模式：一个月以上没有了，心如止水", score: 20, dimension: "frequency" }] },
+        { category: "能量场·距离", title: "晚上关灯睡觉时，你们通常的身体距离是？", options: [{ text: "连体婴：必须紧紧抱着才能睡着", score: 100, dimension: "passion" }, { text: "搭伙人：会有肢体搭在对方身上", score: 80, dimension: "passion" }, { text: "楚河汉界：各睡各的，尽量互不干扰", score: 40, dimension: "passion" }, { text: "背对背：背对着睡，很久都不敢翻身", score: 20, dimension: "passion" }] },
+        { category: "能量场·心动", title: "如果不发生关系，你们现在还会深情接吻（舌吻）吗？", options: [{ text: "会，出门前或睡前都会自然的深吻", score: 100, dimension: "passion" }, { text: "只有在“办事”的前戏里才会，像个程序", score: 60, dimension: "passion" }, { text: "很久没有了，现在的亲亲只是碰一下嘴皮子", score: 20, dimension: "passion" }] },
+        { category: "能量场·主动", title: "通常是谁先发起信号？", options: [{ text: "默契：眼神对上就懂了", score: 90, dimension: "frequency" }, { text: "被动：基本都是对方，我配合", score: 60, dimension: "frequency" }, { text: "心累：基本都是我，经常觉得自己像个乞丐", score: 30, dimension: "frequency" }, { text: "装傻：没人发起，都在假装玩手机", score: 10, dimension: "frequency" }] },
+        // --- 第二维度：人格 (4题) ---
+        { category: "灵魂·偏好", title: "相比于直奔主题，你是否需要长时间的按摩、拥抱和环境氛围铺垫？", options: [{ text: "是的，没有铺垫我完全没感觉，甚至反感", type: "Sensual", score: 80, dimension: "skill" }, { text: "看情况，有时候也喜欢快节奏的刺激", type: "Normal", score: 60, dimension: "skill" }, { text: "不需要，强烈的视觉/动作刺激更重要", type: "Visual", score: 60, dimension: "skill" }] },
+        { category: "灵魂·开关", title: "当看到伴侣穿着特定的性感装扮，或在明亮灯光下，你的反应是？", options: [{ text: "瞬间点燃：视觉冲击对我是第一打火机", type: "Visual", score: 80, dimension: "passion" }, { text: "一般般：我更看重气味、声音和触感", type: "Sensual", score: 60, dimension: "passion" }, { text: "无感：我更在乎当下的情感链接", type: "Normal", score: 60, dimension: "passion" }] },
+        { category: "灵魂·探索", title: "对于尝试新花样（如玩具、角色扮演、新地点），你的态度是？", options: [{ text: "非常期待，早就想试了", score: 100, dimension: "skill" }, { text: "有点害羞，但对方引导的话愿意试", score: 80, dimension: "skill" }, { text: "排斥，觉得那样很奇怪", score: 20, dimension: "skill" }] },
+        { category: "灵魂·链接", title: "如果今天发生过深度的灵魂沟通（聊得很开心），晚上你会更容易想要吗？", options: [{ text: "会！心近了身体才想近", type: "Sensual", score: 100, dimension: "skill" }, { text: "没太大关系，身体归身体", type: "Visual", score: 60, dimension: "skill" }] },
+        // --- 第三维度：刹车 (4题) ---
+        { category: "阻断·环境", title: "如果在过程中突然听到门外有异响（如家人/室友），你会？", options: [{ text: "瞬间没兴致，必须停下确认安全", score: 40, dimension: "safe", brake: "High" }, { text: "有点紧张，但确认没事能继续", score: 70, dimension: "safe", brake: "Medium" }, { text: "完全不影响，甚至觉得更刺激", score: 100, dimension: "safe", brake: "Low" }] },
+        { category: "阻断·自我", title: "当他的手触碰到你的腰或肚子时，你的下意识反应是？", options: [{ text: "瞬间吸气收腹，甚至想把他的手拿开", score: 40, dimension: "safe", brake: "High" }, { text: "很放松，任由他触碰", score: 80, dimension: "safe", brake: "Medium" }, { text: "特意展示曲线，觉得我很迷人", score: 100, dimension: "safe", brake: "Low" }] },
+        { category: "阻断·情绪", title: "如果白天刚吵了一架，晚上对方来求和，你会？", options: [{ text: "滚，别碰我（情绪未消无法身体接触）", score: 30, dimension: "safe", brake: "High" }, { text: "可以做，做完也许就好了（性爱分离）", score: 90, dimension: "safe", brake: "Low" }] },
+        { category: "阻断·压力", title: "当工作压力巨大、特别疲惫的时候，亲热对你来说是？", options: [{ text: "是负担，只想睡觉，别烦我", score: 40, dimension: "safe", brake: "High" }, { text: "是解压方式，做完更轻松", score: 100, dimension: "safe", brake: "Low" }] },
+        // --- 第四维度：未来 (4题) ---
+        { category: "预后·结局", title: "如果一方发出的信号被“冷处理”或拒绝了，当晚关灯后的空气是怎样的？", options: [{ text: "像没发生过一样，依然抱在一起睡", score: 90, dimension: "comm" }, { text: "有点尴尬，背对背沉默", score: 60, dimension: "comm" }, { text: "被拒的那方背对着睡，很久都不敢翻身", score: 20, dimension: "comm" }] },
+        { category: "预后·沟通", title: "你们最近一次进行深度的、不看手机的谈心，是什么时候？", options: [{ text: "最近三天内", score: 100, dimension: "comm" }, { text: "半个月左右", score: 70, dimension: "comm" }, { text: "不记得了，平时只聊家务琐事", score: 30, dimension: "comm" }] },
+        { category: "预后·展望", title: "试想一下，如果你余生几十年的亲密质量都维持现在的状态，你能接受吗？", options: [{ text: "没问题，现在的状态让我很安心", score: 100, dimension: "comm" }, { text: "犹豫，觉得有点像白开水，但也凑合", score: 50, dimension: "comm" }, { text: "瞬间感到窒息/绝望，想逃离", score: 0, dimension: "comm" }] },
+        { category: "预后·意愿", title: "如果对方提出想和你好好聊聊“不和谐”的问题，你会？", options: [{ text: "非常愿意，希望能一起解决", score: 100, dimension: "comm" }, { text: "有点尴尬，但会配合", score: 70, dimension: "comm" }, { text: "回避，觉得没什么好聊的", score: 20, dimension: "comm" }] }
+    ];
+
+    // ================= 逻辑引擎 =================
+    let currentStep = 0;
+    let scores = { frequency:0, passion:0, skill:0, safe:0, comm:0 };
+    let counts = { frequency:0, passion:0, skill:0, safe:0, comm:0 };
+    let types = { Sensual:0, Visual:0, Normal:0 };
+    let brakes = [];
+
+    document.getElementById('q-total').innerText = questions.length;
+
+    function startTest() {
+        const code = document.getElementById('access-code').value.trim();
+        if(VALID_CODES.includes(code)) {
+            document.getElementById('landing-page').classList.add('hidden');
+            document.getElementById('quiz-page').classList.remove('hidden');
+            renderQuestion();
+        } else {
+            alert("解锁码错误，请检查是否输入正确");
+        }
+    }
+
+    function renderQuestion() {
+        if(currentStep >= questions.length) return finishTest();
+        const q = questions[currentStep];
+        document.getElementById('progress').style.width = ((currentStep+1)/questions.length)*100 + "%";
+        document.getElementById('q-curr').innerText = currentStep + 1;
+        document.getElementById('q-tag').innerText = q.category;
+        document.getElementById('q-title').innerText = q.title;
+        
+        let html = '';
+        q.options.forEach((opt, idx) => {
+            html += `<div class="option-card" onclick="selectOpt(${idx})">
+                        <div class="option-circle"></div>
+                        <div class="option-text">${opt.text}</div>
+                     </div>`;
+        });
+        document.getElementById('options-container').innerHTML = html;
+    }
+
+    function selectOpt(idx) {
+        const q = questions[currentStep];
+        const opt = q.options[idx];
+        if(opt.dimension) { scores[opt.dimension]+=opt.score; counts[opt.dimension]++; }
+        if(opt.type) types[opt.type]++;
+        if(opt.brake) brakes.push(opt.score);
+        currentStep++;
+        setTimeout(renderQuestion, 250);
+    }
+
+    function finishTest() {
+        document.getElementById('quiz-page').classList.add('hidden');
+        document.getElementById('loading-page').classList.remove('hidden');
+        
+        const texts = ["正在链接潜意识...", "正在分析能量阻断...", "正在生成灵魂处方..."];
+        let i=0;
+        let timer = setInterval(() => {
+            document.getElementById('loading-text').innerText = texts[i%texts.length];
+            i++;
+        }, 1200);
+
+        setTimeout(() => {
+            clearInterval(timer);
+            showResult();
+        }, 3500);
+    }
+
+    function showResult() {
+        document.getElementById('loading-page').classList.add('hidden');
+        document.getElementById('result-page').classList.remove('hidden');
+
+        // 计算
+        let radarData = ["frequency","passion","skill","safe","comm"].map(k => counts[k]? Math.round(scores[k]/counts[k]):60);
+        let finalScore = Math.round(radarData.reduce((a,b)=>a+b,0)/5);
+        
+        // 顶部分数逻辑 (升级为4档)
+        document.getElementById('final-score').innerText = finalScore;
+        let comment = "";
+        let bgStyle = "";
+
+        if(finalScore > 85) {
+            comment = "神仙眷侣 (灵魂共振)";
+            bgStyle = "linear-gradient(135deg, #2ed573, #7bed9f)"; // 绿色健康
+        } else if (finalScore > 70) {
+            comment = "亚健康 (波动期)";
+            bgStyle = "linear-gradient(135deg, #ffa502, #ffc048)"; // 黄色预警
+        } else if (finalScore > 50) {
+            comment = "合租室友 (缺乏冲动)";
+            bgStyle = "linear-gradient(135deg, #ff7f50, #ff6b81)"; // 橙红危险
+        } else {
+            comment = "丧偶式关系 (心隔片海)";
+            bgStyle = "linear-gradient(135deg, #d63031, #ff7675)"; // 深红ICU
+        }
+        document.getElementById('score-comment').innerText = comment;
+        document.getElementById('score-card-bg').style.background = bgStyle;
+
+        // 雷达
+        new Chart(document.getElementById('radarChart'), {
+            type: 'radar',
+            data: {
+                labels: ["频率", "激情", "技巧", "安全感", "沟通"],
+                datasets: [{
+                    label: '能量分布', data: radarData,
+                    backgroundColor: 'rgba(255, 71, 87, 0.2)', borderColor: '#ff4757', borderWidth: 2, pointBackgroundColor: '#ff4757'
+                }]
+            },
+            options: { scales: { r: { suggestedMin: 0, suggestedMax: 100, ticks: {display:false} } }, plugins: { legend: {display:false} } }
+        });
+
+        // 诊断逻辑
+        let maxType = "Normal";
+        if(types.Sensual >= types.Visual && types.Sensual >= types.Normal) maxType = "Sensual";
+        else if(types.Visual >= types.Sensual && types.Visual >= types.Normal) maxType = "Visual";
+        
+        let avgBrake = brakes.length ? (brakes.reduce((a,b)=>a+b,0)/brakes.length) : 60;
+        let brakeLevel = avgBrake <= 60 ? "High" : "Low";
+
+        // --- 人格文案 (修复对齐) ---
+        let typeHtml = "";
+        let socialTag = "";
+        let socialQuote = "";
+
+        if(maxType === "Sensual") {
+            socialTag = "#高敏感·猫系";
+            socialQuote = "爱对你来说，是皮肤上的诗句。";
+            typeHtml = `
+                <div style="font-weight:bold; font-size:16px; color:#d35400; margin-bottom:5px;">高敏感·猫系 (Sensual)</div>
+                <div class="diag-text">
+                    你像一只优雅的猫。你需要的不是直奔主题的“交作业”，而是漫长的、充满了爱意的预热。你现在的抗拒，很可能是因为你的身体觉得被“冒犯”了。
+                </div>
+                <div class="cp-box">
+                    <div class="cp-row">
+                        <span class="cp-label">❤️ 绝配：</span><span class="cp-text">能量型 (懂你的灵魂，不急于求成)</span>
+                    </div>
+                    <div class="cp-row">
+                        <span class="cp-label">⚔️ 天敌：</span><span class="cp-text">机械型 (只走程序，没有前戏)</span>
+                    </div>
+                </div>
+                <div class="term-box">
+                    <span style="font-weight:bold;">✨ 能量解读：</span>
+                    你的皮肤是接收爱的天线。当你感到被爱时，你比谁都柔软；当你感到压力时，你会瞬间炸毛并逃离。
+                </div>`;
+        } else if(maxType === "Visual") {
+            socialTag = "#视觉系·猎手";
+            socialQuote = "爱是眼里的火焰，始于凝视，终于燃烧。";
+            typeHtml = `
+                <div style="font-weight:bold; font-size:16px; color:#c0392b; margin-bottom:5px;">视觉系·猎手 (Visual)</div>
+                <div class="diag-text">
+                    你是热情的火焰。你容易被视觉符号（身材/眼神/灯光）点燃。现在的平淡，很大程度是因为生活中缺乏了这些让你眼前一亮的“信号”。
+                </div>
+                <div class="cp-box">
+                    <div class="cp-row">
+                        <span class="cp-label">❤️ 绝配：</span><span class="cp-text">大胆型 (敢于展示，让你目不转睛)</span>
+                    </div>
+                    <div class="cp-row">
+                        <span class="cp-label">⚔️ 天敌：</span><span class="cp-text">保守型 (永远关灯，缺乏视觉惊喜)</span>
+                    </div>
+                </div>`;
+        } else {
+            socialTag = "#流动型·灵魂";
+            socialQuote = "身体的纠缠，本质是能量的共振。";
+            typeHtml = `
+                <div style="font-weight:bold; font-size:16px; color:#0984e3; margin-bottom:5px;">流动型·通灵者 (Energetic)</div>
+                <div class="diag-text">
+                    你非常看重“能量流动”。如果两个人情绪不同频，或者刚吵完架，你的身体会本能地关闭。你需要的是先连心，再连身。
+                </div>
+                <div class="cp-box">
+                    <div class="cp-row">
+                        <span class="cp-label">❤️ 绝配：</span><span class="cp-text">灵魂伴侣 (情绪同频)</span>
+                    </div>
+                    <div class="cp-row">
+                        <span class="cp-label">⚔️ 天敌：</span><span class="cp-text">冷漠型 (拒绝沟通)</span>
+                    </div>
+                </div>`;
+        }
+        document.getElementById('type-content').innerHTML = typeHtml;
+        document.getElementById('social-quote').innerText = socialQuote;
+        document.getElementById('social-tags').innerHTML = `<span class="s-tag">${socialTag}</span><span class="s-tag">#亲密关系</span>`;
+
+        // --- 刹车文案 (改名优化+解释优化) ---
+        let brakeHtml = "";
+        if(brakeLevel === "High") {
+            brakeHtml = `
+                <div style="font-weight:bold; font-size:16px; color:#c0392b; margin-bottom:5px;">高敏·安全锁 (Sensitive Lock)</div>
+                <div class="diag-text">
+                    你不是“冷淡”，你是“高压受害者”。你的内心有一把极灵敏的安全锁。压力、身材焦虑、或环境噪音，都会优先触发你的防御机制。
+                </div>
+                <div class="term-box">
+                    <span style="font-weight:bold;">💡 懂你：</span>
+                    这说明你是一个心思细腻的人。只有在绝对放松、被宠爱的环境里，你的锁才会打开。
+                </div>`;
+        } else {
+             brakeHtml = `
+                <div style="font-weight:bold; font-size:16px; color:#27ae60; margin-bottom:5px;">平衡·安全锁 (Balanced Lock)</div>
+                <div class="diag-text">
+                    你的生理机制很健康。如果不想做，更多是因为情感连接或沟通方式出现了错位，而非生理层面的抑制。
+                </div>`;
+        }
+        document.getElementById('brake-content').innerHTML = brakeHtml;
+
+        // --- 处方建议 ---
+        let healHtml = `亲爱的，看到这个结果请不要焦虑。<b>拒绝不是因为不爱，而是因为身体没有被“正确地听见”</b>。既然他不懂这些，那就由你来引导他。`;
+        document.getElementById('healing-intro').innerHTML = healHtml;
+
+        let actionHtml = "";
+        if(maxType === "Sensual") {
+            actionHtml += `<div class="action-step"><div class="action-label">脱敏练习</div><div class="action-content">本周约定一次“只许抚摸，不许越界”的时间。告诉他：“今晚我只想让你抱我、摸我的后背15分钟，绝对不可以做最后一步。”这能让你紧绷的防御机制放松下来。</div></div>`;
+        } else {
+            actionHtml += `<div class="action-step"><div class="action-label">视觉唤醒</div><div class="action-content">别关灯！或者留一盏暖黄色的台灯。尝试一件你很久没穿过的风格，利用视觉差来重新激活他的多巴胺。</div></div>`;
+        }
+        if(brakeLevel === "High") {
+            actionHtml += `<div class="action-step"><div class="action-label">环境重塑</div><div class="action-content">你的关键是“安全感”。亲热前，请当着你的面锁好门，把手机扔到客厅。创造一个“绝对不会被打扰”的真空环境，这对你的大脑至关重要。</div></div>`;
+        } else {
+            actionHtml += `<div class="action-step"><div class="action-label">深度同步</div><div class="action-content">找个时间，握着他的手说：“我最近感觉我们像室友，我很怀念以前。我们可以今晚只接吻吗？”</div></div>`;
+        }
+        document.getElementById('action-plan').innerHTML = actionHtml;
+    }
+</script>
+</body>
+</html>
